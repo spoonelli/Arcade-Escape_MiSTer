@@ -30,11 +30,16 @@ field-testing builds all the same.
 
 ## Install
 
-1. Copy `Arcade-Escape_YYYYMMDD.rbf` (dated per MiSTer's naming convention) to
-   `_Arcade/cores/` on your MiSTer SD card. **Delete any older
-   `escape*.rbf`** — the framework matches by prefix and may load the
-   stale one.
-2. Copy `Escape from the Planet of the Robot Monsters (set 1).mra` to `_Arcade/`.
+Both files are in [`releases/`](releases/) in this repository.
+
+1. Copy `Arcade-Escape_YYYYMMDD.rbf` to `_Arcade/cores/` on your MiSTer
+   SD card, keeping its name — the MRA references the core as
+   `Arcade-Escape`. **Delete any older `escape*.rbf` or
+   `Arcade-Escape*.rbf`**; the framework matches by prefix and may load
+   a stale one.
+2. Copy `Escape from the Planet of the Robot Monsters (set 1).mra` to
+   `_Arcade/`, replacing any earlier copy (older MRAs reference the old
+   rbf name).
 3. Put your own MAME `eprom.zip` romset in `games/mame/`. **No ROM data is
    included** — the MRA assembles the game from your verified dumps.
 4. Launch the game from the Arcade menu.

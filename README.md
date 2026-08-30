@@ -44,9 +44,9 @@ Both files are in [`releases/`](releases/) in this repository.
    included** — the MRA assembles the game from your verified dumps.
 4. Launch the game from the Arcade menu.
 
-## First boot
+## Self-Test and First boot
 
-The machine boots clean. To confirm which build is running, open **Show
+Note that this core follows the authentic behavior of the original PCB with a "Waiting for Second Processor" screen that will hold for several seconds.  After that, the machine boots clean. To confirm which build is running, open **Show
 Credits** in the OSD (or press the Credits button / keyboard **C**) — the
 **MISTER BUILD number** is on page 1. Check it matches the build you
 installed; it is the only guard against a cached or stale `.rbf`, and it

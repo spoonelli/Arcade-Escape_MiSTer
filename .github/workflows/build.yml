@@ -1,0 +1,27 @@
+name: Build core (Quartus)
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile Arcade-Escape
+        run: |
+          docker run --rm -v "$PWD":/work -w /work             theypsilon/quartus-lite-c5:18.1             quartus_sh --flow compile Arcade-Escape
+
+      - name: Timing summary
+        if: always()
+        run: |
+          sed -n '1,40p' output_files/Arcade-Escape.fit.summary || true
+          awk '/; Fmax Summary/,/; Minimum Pulse Width Summary/'             output_files/Arcade-Escape.sta.rpt | head -60 || true
+
+      - name: Upload rbf
+        uses: actions/upload-artifact@v4
+        with:
+          name: Arcade-Escape-rbf
+          path: output_files/Arcade-Escape.rbf

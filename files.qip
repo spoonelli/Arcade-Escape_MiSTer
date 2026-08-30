@@ -1,0 +1,78 @@
+# Atari Escape - MiSTer file list.
+#
+# Paths are relative to this .qip (the repo root). All sources are vendored
+# under rtl/ - this repo is the self-contained MiSTer distribution of the
+# core; upstream development lives at github.com/spoonelli/Atari-Dual-68k.
+#
+# VENDORING RULES (identical to src/fpga/ap_core.qsf - see its comments):
+#   * jt51.v and jt51_acc.v are VENDORED into core/rtl/jt51v/ (per-channel
+#     user gain).  The rest of jt51 comes from the pristine submodule.  The
+#     submodule's own jt51.qip must NOT be included - it would pull duplicate
+#     definitions of the two vendored modules.
+#   * TG68K.vhd and TG68KdotC_Kernel.vhd are VENDORED into core/rtl/tg68kv/
+#     (added LOCK output for the TASLOCK-102 read-modify-write interlock).
+#     Only TG68K_ALU.vhd and TG68K_Pack.vhd come from the submodule.
+#   * T65 comes from the Arcade-Atari-system1_MiSTer submodule untouched.
+
+set_global_assignment -name SYSTEMVERILOG_FILE Arcade-Escape.sv
+set_global_assignment -name VERILOG_FILE rtl/escape_mister.v
+set_global_assignment -name VERILOG_FILE rtl/escape_credits.v
+# NOTE: the core PLL is NOT listed here.  sys/pll_q<version>.qip pulls in
+# "rtl/pll.qip" (a path the MiSTer framework hard-codes relative to the project
+# directory), which is why our PLL lives at src/mister/rtl/pll.qip.  Listing it
+# again here would include it twice.
+
+# ---- shared machine RTL (same files as the Pocket build) -------------------
+set_global_assignment -name VERILOG_FILE rtl/core/sdram_simple.v
+set_global_assignment -name VERILOG_FILE rtl/core/sdram_openrow.v
+set_global_assignment -name VERILOG_FILE rtl/core/escape_mob.v
+set_global_assignment -name VERILOG_FILE rtl/core/escape_prio.v
+set_global_assignment -name VERILOG_FILE rtl/core/escape_mo_cache.v
+set_global_assignment -name VERILOG_FILE rtl/core/escape_stain.v
+set_global_assignment -name VERILOG_FILE rtl/core/hall_stick.v
+set_global_assignment -name VHDL_FILE rtl/core/escape_core.vhd
+set_global_assignment -name VHDL_FILE rtl/core/TMS5220.vhd
+set_global_assignment -name VHDL_FILE rtl/core/escape_jsa.vhd
+set_global_assignment -name VHDL_FILE rtl/core/dpram_dc.vhd
+set_global_assignment -name VHDL_FILE rtl/core/escape_decode.vhd
+set_global_assignment -name VHDL_FILE rtl/core/spram_bytelane.vhd
+set_global_assignment -name VHDL_FILE rtl/core/dpram_bytelane_syn.vhd
+
+# ---- jt51 (YM2151): two vendored files + pristine submodule ---------------
+set_global_assignment -name VERILOG_FILE rtl/core/jt51v/jt51.v
+set_global_assignment -name VERILOG_FILE rtl/core/jt51v/jt51_acc.v
+set_global_assignment -name VERILOG_FILE rtl/jt51/jt51_csr_op.v
+set_global_assignment -name VERILOG_FILE rtl/jt51/jt51_eg.v
+set_global_assignment -name VERILOG_FILE rtl/jt51/jt51_exp2lin.v
+set_global_assignment -name VERILOG_FILE rtl/jt51/jt51_exprom.v
+set_global_assignment -name VERILOG_FILE rtl/jt51/jt51_kon.v
+set_global_assignment -name VERILOG_FILE rtl/jt51/jt51_lfo.v
+set_global_assignment -name VERILOG_FILE rtl/jt51/jt51_lin2exp.v
+set_global_assignment -name VERILOG_FILE rtl/jt51/jt51_mmr.v
+set_global_assignment -name VERILOG_FILE rtl/jt51/jt51_mod.v
+set_global_assignment -name VERILOG_FILE rtl/jt51/jt51_noise.v
+set_global_assignment -name VERILOG_FILE rtl/jt51/jt51_noise_lfsr.v
+set_global_assignment -name VERILOG_FILE rtl/jt51/jt51_op.v
+set_global_assignment -name VERILOG_FILE rtl/jt51/jt51_pg.v
+set_global_assignment -name VERILOG_FILE rtl/jt51/jt51_phinc_rom.v
+set_global_assignment -name VERILOG_FILE rtl/jt51/jt51_phrom.v
+set_global_assignment -name VERILOG_FILE rtl/jt51/jt51_pm.v
+set_global_assignment -name VERILOG_FILE rtl/jt51/jt51_reg.v
+set_global_assignment -name VERILOG_FILE rtl/jt51/jt51_reg_ch.v
+set_global_assignment -name VERILOG_FILE rtl/jt51/jt51_sh.v
+set_global_assignment -name VERILOG_FILE rtl/jt51/jt51_timers.v
+
+# ---- T65 (JSA 6502) -------------------------------------------------------
+set_global_assignment -name VHDL_FILE rtl/T65/T65_Pack.vhd
+set_global_assignment -name VHDL_FILE rtl/T65/T65_MCode.vhd
+set_global_assignment -name VHDL_FILE rtl/T65/T65_ALU.vhd
+set_global_assignment -name VHDL_FILE rtl/T65/T65.vhd
+
+# ---- TG68K (both 68000s): two vendored files + pristine submodule ---------
+set_global_assignment -name VHDL_FILE rtl/core/tg68kv/TG68K.vhd
+set_global_assignment -name VHDL_FILE rtl/core/tg68kv/TG68KdotC_Kernel.vhd
+set_global_assignment -name VHDL_FILE rtl/TG68K/TG68K_ALU.vhd
+set_global_assignment -name VHDL_FILE rtl/TG68K/TG68K_Pack.vhd
+
+# ---- constraints ----------------------------------------------------------
+set_global_assignment -name SDC_FILE escape.sdc

@@ -1,0 +1,7 @@
+output_files/
+db/
+incremental_db/
+*.qws
+*.rpt
+*.summary
+c5_pin_model_dump.txt

@@ -9,7 +9,7 @@ fixes land there first and are vendored here per release.
 
 A MiSTer (DE10-Nano) port of the
 [Atari Dual 68k](https://github.com/spoonelli/Atari-Dual-68k) core,
-implementing Atari Games' 1989 arcade release (MAME set `eprom`).
+implementing Atari Games' 1989 arcade release (MAME set `eprom`).  This LLM-assisted build has been refined extensively through testing and benchmarking against an original dedicated cabinet and PCB, with architecture decisions defaulting to preserving original gameplay accuracy.  
 
 **Features:** 
 - The dual-CPU program boots and runs on two genuinely concurrent 68010s with shared RAM and the mailbox

@@ -22,12 +22,55 @@ screens; high scores and operator settings persist.
 
 - The machine RTL is identical to the Analogue Pocket release - plan to continue dual path development wherever feasible.  
 
-**Measured accuracy** (full details in the project
-[README](https://github.com/spoonelli/Atari-Dual-68k#readme) and
-[docs/DEVIATIONS.md](https://github.com/spoonelli/Atari-Dual-68k/blob/main/docs/DEVIATIONS.md)):
-Performance references against actual machine gameplay.  MAME for secondary references.  attract-loop period accuracy exceeding 99.6% when compared with MAME; walk cadence locked at 8
-frames/phase against real-cabinet captures; testing and video analysis used to confirm performance authenticity. Crowd-scene performance on this port is measured at parity
-with the Pocket release (identical scroll-velocity distributions). 
+## Accuracy
+
+This is a **behaviorally accurate** core with authentic timing anchors — not
+a cycle-exact replica. Performance references are against actual machine
+gameplay, with MAME as the secondary reference. Honest classification:
+
+**Authentic (schematic-verified):** clock frequencies (7.159 MHz CPUs, true
+pixel clock, all clocks derived from the board's 14.318 MHz colorburst
+family); raster geometry (456x262 total, 336x240 visible, ~59.92 Hz);
+complete memory map, register and latch semantics; genuinely concurrent dual
+CPUs (the real board's architecture — MAME time-slices); zero-wait ROM
+fetches (traced pin-by-pin on the schematic: the 4-clock fastpath is the
+*accurate* path, not an overclock); the motion-object line buffer's
+two-pixels-per-clock fill (SP-332 sheet 9's paired LB customs); IRGB palette
+math with intensity; autovectored interrupts; the 128 ms watchdog.
+
+**Approximate:** per-instruction CPU cycle counts (TG68K is
+instruction-accurate, not cycle-exact); bus-cycle timing off-ROM (the
+original gave every subsystem its own parallel bus; this port funnels
+through one SDRAM with an open-row controller, bank-partitioned so the
+playfield and sprites keep separate open rows); video internals (same VRAM
+in, same pixels out on the same raster grid, via a re-architected line
+engine whose architecture-level properties come from the schematic).
+
+**Measured end-to-end, on hardware, against references:**
+
+- **Frame-level pacing**: attract-loop period accuracy exceeding **99.6%**
+  against MAME, story-panel timers in exact lockstep — and the residual is
+  MAME slowing *more* than this core in the demo.
+- **Animation cadence**: the walk cycle advances every **8 frames**, locked
+  against real-cabinet captures.
+- **Slowdown character**: in heavy crowds the game software slows on every
+  platform; a MAME longplay spends ~1.5x more of its crowd time slowed than
+  this core — consistent with MAME modelling the 68000 JAMMA variant while
+  this core defaults to the dedicated cabinet's 68010.
+- **This port specifically**: crowd-scene scroll-velocity distributions
+  measured identical to the Analogue Pocket release, with zero
+  sub-half-speed dips where MAME dips in 19-28% of samples.
+- **Pixels**: motion-object output replays MAME scene dumps at **100.0000%
+  agreement and coverage** on crowd, door, spawn-flash and factory-map
+  fixtures.
+
+Escape's game logic is IRQ- and frame-driven rather than cycle-counted, so
+at equal frame pacing the gameplay is indistinguishable from the arcade.
+The full deviations ledger and architectural-decisions discussion live
+upstream:
+[docs/DEVIATIONS.md](https://github.com/spoonelli/Atari-Dual-68k/blob/main/docs/DEVIATIONS.md)
+and the
+[project README](https://github.com/spoonelli/Atari-Dual-68k#architectural-decisions--for-the-cycle-accuracy-conversation).
 
 ## Install
 

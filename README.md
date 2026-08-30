@@ -22,6 +22,20 @@ screens; high scores and operator settings persist.
 
 - The machine RTL is identical to the Analogue Pocket release - plan to continue dual path development wherever feasible.  
 
+
+| Subsystem | State |
+|---|---|
+| Build (CI, Quartus in Docker) | ✅ per-push compile, timing summary, rbf artifact |
+| Native simulation (GHDL + iverilog, upstream) | ✅ boot, march, JSA, sprite-scene replay benches, plus MiSTer-specific gates: playfield fetch service, crowd-load arbiter bench with hardware-calibrated thresholds |
+| ROM loading (MRA + ioctl → SDRAM, sprite repack in RTL, BRAM shadows) | ✅ CRC-checked by the MRA; no ROM data distributed |
+| Dual 68010s + shared RAM + mailbox handshake | ✅ genuinely concurrent on hardware |
+| SDRAM subsystem (open-row controller, bank-partitioned MO tile mirror, MO/CPU interleaved arbiter) | ✅ bench-gated; crowd performance measured at Pocket parity |
+| Video: alpha / playfield / motion objects, IRGB palette + intensity | ✅ pixel-verified vs MAME scene replay |
+| Sound (JSA-I: 6502 + YM2151 + TMS5220 speech) | ✅ full pipeline; liveness watchdog self-heals a wedged sound CPU |
+| Inputs (buttons, hall-stick model, keyboard) | ✅ incl. in-game calibration screens |
+| Credits overlay + OSD (volume sliders, Show Credits) | ✅ build number on credits page 1 |
+| High scores / operator settings | ✅ persist across power cycles |
+
 ## Accuracy
 
 This is a **behaviorally accurate** core with authentic timing anchors — not

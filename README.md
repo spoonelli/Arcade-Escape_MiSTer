@@ -11,10 +11,9 @@ A MiSTer (DE10-Nano) port of the
 [Atari Dual 68k](https://github.com/spoonelli/Atari-Dual-68k) core,
 implementing Atari Games' 1989 arcade release (MAME set `eprom`).
 
-**What you get:** the whole game. The real dual-CPU program boots and
+**Features:** The real dual-CPU program boots and
 runs on two genuinely concurrent 68010s with shared RAM and the mailbox
-handshake, as the board does (68000 selectable — the dedicated cabinet
-shipped a 68010, the JAMMA version a 68000; both are authentic). The
+handshake, as the board does (68000 selectable — the dedicated cabinet that served as a reference shipped a 68010, JAMMA and dedicated schematics both show 68010s.  However, multiple boards evidenced in the wild with 68000; both are authentic). The
 full attract cycle plays out — story pages, TMS5220 announcer speech,
 high-score table, demo play — then it takes coins, starts, and plays:
 Jake walks, robots swarm, the JSA-I sound board (YM2151 FM + speech)
@@ -22,18 +21,16 @@ delivers music and effects in real time. All three video layers come
 through the schematic's paired line-buffer sprite engine; the
 hall-effect stick model includes the game's own in-game calibration
 screens; high scores and operator settings persist. The machine RTL is
-identical to the Analogue Pocket release — a fix on one platform is a
-fix on both.
+identical to the Analogue Pocket release - plan to continue dual path development wherever feasible.  
 
-**Measured accuracy** (details in the project
+**Measured accuracy** (full details in the project
 [README](https://github.com/spoonelli/Atari-Dual-68k#readme) and
 [docs/DEVIATIONS.md](https://github.com/spoonelli/Atari-Dual-68k/blob/main/docs/DEVIATIONS.md)):
-attract-loop period within 0.35% of MAME; walk cadence locked at 8
+Performance references against actual machine gameplay.  MAME for secondary references.  attract-loop period accuracy exceeding 99.6% when compared with MAME; walk cadence locked at 8
 frames/phase against real-cabinet captures; the core never runs faster than
 authentic. Crowd-scene performance on this port is measured at parity
 with the Pocket release (identical scroll-velocity distributions, zero
-slowdown dips where MAME dips in 19-28% of samples). Treat these as
-field-testing builds all the same.
+slowdown dips where MAME dips in 19-28% of samples). 
 
 ## Install
 

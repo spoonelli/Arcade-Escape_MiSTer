@@ -26,10 +26,8 @@ screens; high scores and operator settings persist.
 [README](https://github.com/spoonelli/Atari-Dual-68k#readme) and
 [docs/DEVIATIONS.md](https://github.com/spoonelli/Atari-Dual-68k/blob/main/docs/DEVIATIONS.md)):
 Performance references against actual machine gameplay.  MAME for secondary references.  attract-loop period accuracy exceeding 99.6% when compared with MAME; walk cadence locked at 8
-frames/phase against real-cabinet captures; the core never runs faster than
-authentic. Crowd-scene performance on this port is measured at parity
-with the Pocket release (identical scroll-velocity distributions, zero
-slowdown dips where MAME dips in 19-28% of samples). 
+frames/phase against real-cabinet captures; testing and video analysis used to confirm performance authenticity. Crowd-scene performance on this port is measured at parity
+with the Pocket release (identical scroll-velocity distributions). 
 
 ## Install
 

@@ -1,6 +1,6 @@
 # Arcade: Escape from the Planet of the Robot Monsters (MiSTer)
 
-Self-contained MiSTer distribution repository to confirm to standard core
+Self-contained MiSTer distribution repository to conform to standard MiSTer core
 layout specs (`sys/`, `rtl/`, `releases/`). **Upstream development** — the
 shared machine RTL, simulation benches, measurement tooling, and the
 Analogue Pocket build — lives at

@@ -11,17 +11,16 @@ A MiSTer (DE10-Nano) port of the
 [Atari Dual 68k](https://github.com/spoonelli/Atari-Dual-68k) core,
 implementing Atari Games' 1989 arcade release (MAME set `eprom`).
 
-**Features:** The real dual-CPU program boots and
-runs on two genuinely concurrent 68010s with shared RAM and the mailbox
-handshake, as the board does (68000 selectable — the dedicated cabinet that served as a reference shipped a 68010, JAMMA and dedicated schematics both show 68010s.  However, multiple boards evidenced in the wild with 68000; both are authentic). The
-full attract cycle plays out — story pages, TMS5220 announcer speech,
-high-score table, demo play — then it takes coins, starts, and plays:
-Jake walks, robots swarm, the JSA-I sound board (YM2151 FM + speech)
-delivers music and effects in real time. All three video layers come
-through the schematic's paired line-buffer sprite engine; the
-hall-effect stick model includes the game's own in-game calibration
-screens; high scores and operator settings persist. The machine RTL is
-identical to the Analogue Pocket release - plan to continue dual path development wherever feasible.  
+**Features:** 
+- The dual-CPU program boots and runs on two genuinely concurrent 68010s with shared RAM and the mailbox
+handshake, as the board does (68000 selectable — the dedicated cabinet that served as a reference shipped a 68010, and also as referenced in both the JAMMA kit and dedicated schematics.  However, the developer has discovered through this process that there are multiple boards evidenced in the wild that carry 68000s; therefore, both are "authentic").
+
+- All three video layers come through the schematic's paired line-buffer sprite engine.
+
+- The hall-effect stick model includes the game's own in-game calibration
+screens; high scores and operator settings persist.
+
+- The machine RTL is identical to the Analogue Pocket release - plan to continue dual path development wherever feasible.  
 
 **Measured accuracy** (full details in the project
 [README](https://github.com/spoonelli/Atari-Dual-68k#readme) and

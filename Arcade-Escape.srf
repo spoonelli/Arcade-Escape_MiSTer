@@ -1,0 +1,4 @@
+# Quartus warning-suppression rules for Arcade-Escape.
+# Intentionally minimal: the build compiles clean enough that no
+# suppressions are currently required; the file exists to complete the
+# standard MiSTer core template set.

@@ -80,6 +80,21 @@ module emu
 	output  [7:0] DDRAM_BE,
 	output        DDRAM_WE,
 
+`ifdef MISTER_FB
+	// MISTER-158: DDR3 framebuffer, driven by sys screen_rotate for the
+	// Rotate / Flip 180 options.  With both off the framebuffer disengages
+	// (FB_EN low) and video takes the same direct path as build 153.
+	output        FB_EN,
+	output  [4:0] FB_FORMAT,
+	output [11:0] FB_WIDTH,
+	output [11:0] FB_HEIGHT,
+	output [31:0] FB_BASE,
+	output [13:0] FB_STRIDE,
+	input         FB_VBL,
+	input         FB_LL,
+	output        FB_FORCE_BLANK,
+`endif
+
 	//SDRAM interface with lower latency
 	output        SDRAM_CLK,
 	output        SDRAM_CKE,
@@ -111,7 +126,8 @@ assign ADC_BUS  = 'Z;
 assign USER_OUT = '1;
 assign {UART_RTS, UART_TXD, UART_DTR} = 0;
 assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
-assign {DDRAM_CLK, DDRAM_BURSTCNT, DDRAM_ADDR, DDRAM_DIN, DDRAM_BE, DDRAM_RD, DDRAM_WE} = '0;
+// DDRAM_* is owned by screen_rotate (MISTER-158) - see the VIDEO section.
+assign FB_FORCE_BLANK = 0;
 
 assign VGA_F1      = 0;
 assign VGA_SCALER  = 0;
@@ -129,59 +145,67 @@ assign BUTTONS   = 0;
 //////////////////////////////////////////////////////////////////
 
 wire [1:0] ar = status[122:121];
-assign VIDEO_ARX = (!ar) ? 12'd4 : (ar - 1'd1);
-assign VIDEO_ARY = (!ar) ? 12'd3 : 12'd0;
+// MISTER-158: a rotated picture swaps the 4:3 default (Psikyo's arx/ary swap)
+assign VIDEO_ARX = (!ar) ? (rotate_en ? 12'd3 : 12'd4) : (ar - 1'd1);
+assign VIDEO_ARY = (!ar) ? (rotate_en ? 12'd4 : 12'd3) : 12'd0;
 
 `include "build_id.v"
 localparam CONF_STR = {
-	"A.ESCAPE;;",
+	// Plain modern core id (Cave/IGSPGM style; the "A." arcade prefix is
+	// the DK-era legacy).  Renaming moves the saved-config namespace.
+	"ESCAPE;;",
 	"-;",
-	"O[122:121],Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
-	"O[5:3],Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
+	"P1,Video;",
+	"P1O[122:121],Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
+	// MISTER-158: for rotated / flipped cabinets, the Psikyo core's rows
+	"P1O[16:15],Rotate,No,CCW,CW;",
+	"P1O[17],Flip 180,Off,On;",
+	"P1O[5:3],Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
+	"P1-;",
+	"P1O[27:24],CRT H Adjust,0,+1,+2,+3,+4,+5,+6,+7,-8,-7,-6,-5,-4,-3,-2,-1;",
+	"P1O[31:28],CRT V Adjust,0,+1,+2,+3,+4,+5,+6,+7,-8,-7,-6,-5,-4,-3,-2,-1;",
+	// MISTER-159: root spacer between every page link, the Cave layout
+	"-;",
+	"P2,Audio;",
+	// Audio sliders: SENSE IS INVERTED - status powers up 0 and bit-clear
+	// must be the default, so the labels count DOWN and the wires are
+	// driven ~status[].  Default (status 0) = "7" = full volume.
+	"P2O[11:9],Music Volume,7,6,5,4,3,2,1,0;",
+	"P2O[14:12],Speech Volume,7,6,5,4,3,2,1,0;",
+	"-;",
+	// MISTER-157: the DonkeyKong-family pause idiom - a mappable Pause
+	// button plus this page - replaces the Psikyo three-state (155/156).
+	// OSD-pause defaults Off (owner call, diverging from the DK family's
+	// On) so its sense is plain; the dim row IS INVERTED like O[8] -
+	// status powers up 0, dim defaults On, wire driven ~status[20].
+	"P3,Pause options;",
+	"P3O[18],Pause when OSD is open,Off,On;",
+	"P3O[20],Dim video after 10s,On,Off;",
+	"-;",
+	"P4,Debug;",
+	// VSHAD3-112 runtime toggle, moved to the Debug page for the
+	// mister-devel menu conventions (MISTER-154).  SENSE IS INVERTED ON
+	// PURPOSE: status powers up 0 and the shadow's default is ON, so
+	// 0 = On and the wire is driven ~status[8].  Writing this "Off,On"
+	// would ship every first-boot player the non-default configuration.
+	"P4O[8],ROM Shadow 0x54000,On,Off;",
+	"P4O[7],Skip Self-Test,Off,On;",
 	"-;",
 	"O[6],Service Mode,Off,On;",
-	"O[7],Skip Self-Test,Off,On;",
-	"-;",
-	// VSHAD3-112 runtime toggle.  This is the MiSTer equivalent of the
-	// Pocket's interact.json variable id 37 "ROM Shadow 0x54000" - and the
-	// only equivalent there is: interact.json is an openFPGA/APF file that
-	// MiSTer neither reads nor has an analogue of, so a Pocket menu entry
-	// that should exist on both platforms has to be hand-carried to CONF_STR.
-	// (The Pocket's Interact menu also has a hard 16-variable cap, currently
-	// 11 used.  CONF_STR has no such cap - it is limited only by status[]
-	// width, 128 bits, of which this core uses 8.)
-	//
-	// SENSE IS INVERTED ON PURPOSE.  hps_io powers status[] up at zero and a
-	// fresh SD card has no saved config, so bit-clear MUST be the default
-	// behaviour.  The shadow's default is ON (matching Interact id 37
-	// defaultval 1), therefore 0 = On and the wire is driven ~status[8].
-	// Writing this "Off,On" would silently ship every first-boot player the
-	// non-default configuration.
-	"O[8],ROM Shadow 0x54000,On,Off;",
 	"-;",
 	"R[0],Reset;",
 	"-;",
-	// ---------------------------------------------------------------------
-	// MISTER-132: the About/Credits CONF_STR submenu pages that lived here
-	// rendered EMPTY on the owner's framework build ("Pn-,text;" text lines
-	// are not drawn by every menu renderer), so the attributions moved into
-	// the CORE's own video path: escape_credits.v draws them as an overlay,
-	// cycled by the mappable Credits button (page 1 -> page 2 -> off).  The
-	// full unabridged attribution text stays in docs/MISTER.md and in
-	// support/gen_credits_overlay.py, which generates the overlay bitmap.
-	//
-	// Audio sliders: SENSE IS INVERTED like ROM Shadow above - status powers
-	// up 0 and bit-clear must be the default, so the labels count DOWN and
-	// the wires are driven ~status[].  Default (status 0) = "7" = full volume.
-	"O[11:9],Music Volume,7,6,5,4,3,2,1,0;",
-	"O[14:12],Speech Volume,7,6,5,4,3,2,1,0;",
-	"-;",
-	"T[16],Show Credits;",
-	"-;",
-	"J1,Jump,Fire,Duck,Bomb,Start,Coin,Credits;",
-	// owner default: Jump=Y(left) Fire=B(bottom) Duck=A(right) Bomb=X(top)
-	"jn,Y,B,A,X,Start,Select,R;",
-	"V,v",`BUILD_DATE
+	"J1,Jump,Fire,Duck,Bomb,Start,Coin,Pause;",
+	// owner default: Jump=Y(left) Fire=B(bottom) Duck=A(right) Bomb=X(top);
+	// Pause rides the left shoulder, same slot the DK core gives it
+	"jn,Y,B,A,X,Start,Select,L;",
+	// Renders as "ESCAPE v260901 by spoonelli" - the family convention
+	// (Cave's author-credit form): the date IS the version, matching the
+	// CoreName_YYYYMMDD.rbf naming.  No internal build number on screen -
+	// the build <-> release mapping lives in the release notes.  Main
+	// prepends the core id, and the whole line must stay within the OSD's
+	// 32 columns or the credit truncates (v158 proved it at 33).
+	"V,v",`BUILD_DATE," by spoonelli;"
 };
 
 ////////////////////////////   CLOCKS   //////////////////////////
@@ -232,6 +256,7 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 	.status(status),
 	.status_menumask({1'b0, direct_video}),
 	.direct_video(direct_video),
+	.video_rotated(video_rotated),
 
 	.ioctl_download(ioctl_download),
 	.ioctl_wr(ioctl_wr),
@@ -254,7 +279,7 @@ wire rom_wr = ioctl_wr && ioctl_download && (ioctl_index == 16'd0);
 
 /////////////////////////   KEYBOARD   ///////////////////////////
 reg kb_up1, kb_dn1, kb_lf1, kb_rt1, kb_jump1, kb_fire1, kb_duck1, kb_bomb1;
-reg kb_start1, kb_coin1, kb_start2, kb_coin2, kb_creds;
+reg kb_start1, kb_coin1, kb_start2, kb_coin2;
 wire pressed = ps2_key[9];
 always @(posedge clk_sys) begin
 	reg old_state;
@@ -273,7 +298,6 @@ always @(posedge clk_sys) begin
 			9'h01E: kb_start2 <= pressed;   // 2
 			9'h02E: kb_coin1  <= pressed;   // 5
 			9'h036: kb_coin2  <= pressed;   // 6
-			9'h021: kb_creds  <= pressed;   // C - credits overlay (MISTER-133)
 			default: ;
 		endcase
 	end
@@ -287,22 +311,18 @@ wire        rom_ready;
 
 wire reset = RESET | status[0] | buttons[1] | ioctl_download;
 
-// MISTER-132: Credits button (joy bit 10, either player) cycles the core's
-// credits overlay: off -> page 1 -> page 2 -> off.  Synchronised and
-// edge-detected in clk_sys; reset returns to off.
-reg  [1:0] credits_page = 2'd0;
-reg  [2:0] cr_btn_sync = 3'd0;
+// MISTER-157: DonkeyKong-family pause - the mappable Pause button toggles,
+// OSD-open pauses when the (default-Off, plain-sense) option says so, and
+// reset cancels a held pause.  status[19] (155's hard-On state) is retired.
+wire pause_btn = joystick_0[10] | joystick_1[10];
+reg  pause_toggle = 1'b0;
+reg  pause_btn_d  = 1'b0;
 always @(posedge clk_sys) begin
-	// MISTER-133: keyboard C works with no button mapping at all - a fresh
-	// install has no saved per-core map, so the joystick Credits button only
-	// exists after "Define eprom buttons" has been run once.
-	// three ways in: the J1 "Credits" button (assignable in Define buttons),
-	// keyboard C, and the OSD "Show Credits" trigger (status[16])
-	cr_btn_sync <= {cr_btn_sync[1:0], joystick_0[10] | joystick_1[10] | kb_creds | status[16]};
-	if (reset) credits_page <= 2'd0;
-	else if (cr_btn_sync[1] && !cr_btn_sync[2])
-		credits_page <= (credits_page == 2'd2) ? 2'd0 : credits_page + 2'd1;
+	pause_btn_d <= pause_btn;
+	if (pause_btn & ~pause_btn_d) pause_toggle <= ~pause_toggle;
+	if (reset) pause_toggle <= 1'b0;
 end
+wire pause = pause_toggle | (OSD_STATUS & status[18]);
 
 
 escape_mister machine
@@ -379,7 +399,9 @@ escape_mister machine
 	// MISTER-132: inverted-sense sliders (see CONF_STR comment) + overlay page
 	.uvol_ym      (~status[11:9]),
 	.uvol_tms     (~status[14:12]),
-	.credits_page (credits_page),
+	.crt_hadj     (status[27:24]),
+	.crt_vadj     (status[31:28]),
+	.pause        (pause),
 
 	.rom_ready  (rom_ready)
 );
@@ -398,8 +420,43 @@ reg [2:0] pix_tog_s = 3'd0;
 always @(posedge clk_ram) pix_tog_s <= {pix_tog_s[1:0], pix_tog};
 wire core_ce_pix = pix_tog_s[2] ^ pix_tog_s[1];
 
-wire [23:0] RGB_in = {core_r, core_g, core_b};
+// MISTER-155: dim the frozen frame to half brightness after 10 s of pause,
+// the burn-in guard from JimmyStones' Pause_MiSTer (idiom only, no code
+// copied - the Psikyo pause we modelled doesn't carry it, the wider arcade
+// family does).  The timer runs in the pixel/CPU domain; the flag flips at
+// most once per pause with the picture already frozen, so a two-flop
+// resync into clk_ram is plenty.
+wire       dim_en = ~status[20];   // inverted sense - see CONF_STR comment
+reg [26:0] dim_ctr = 27'd0;
+wire       dim_hit = (dim_ctr == 27'd71_590_910);   // 10 s at 7.159091 MHz
+always @(posedge clk_sys) begin
+	if (pause && dim_en) begin
+		if (!dim_hit) dim_ctr <= dim_ctr + 27'd1;
+	end else begin
+		dim_ctr <= 27'd0;
+	end
+end
+reg [1:0] dim_s = 2'd0;
+always @(posedge clk_ram) dim_s <= {dim_s[0], dim_hit};
+
+wire [23:0] RGB_in = dim_s[1] ? {1'b0, core_r[7:1], 1'b0, core_g[7:1], 1'b0, core_b[7:1]}
+                              : {core_r, core_g, core_b};
 wire  [2:0] fx = status[5:3];
+
+// MISTER-158: Rotate / Flip 180 through the framework's screen_rotate
+// (sys/arcade_video.v) and its triple-buffered DDR3 framebuffer.  Wiring
+// per the Psikyo core; module and buffer are framework code (sys/ NOTICE
+// row).  Rotation is forced off under direct video, matching the DK core.
+// With Rotate=No and Flip off, FB_EN stays low and the scaler takes the
+// direct VGA_* path - bit-identical to what shipped in 153.
+wire [1:0] rotate_sel = status[16:15];
+wire       rotate_en  = (rotate_sel != 2'd0) & ~direct_video;
+wire       rotate_ccw = (rotate_sel == 2'd1);
+wire       flip       = status[17];
+wire       no_rotate  = ~rotate_en;
+wire       video_rotated;
+
+screen_rotate screen_rotate (.*);
 
 arcade_video #(.WIDTH(336), .DW(24)) arcade_video
 (

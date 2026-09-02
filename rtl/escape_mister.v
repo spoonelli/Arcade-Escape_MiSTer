@@ -99,7 +99,7 @@ module escape_mister (
     output reg         VBlank,
 
     // ---- audio ------------------------------------------------------------
-    output wire [15:0] audio_l,
+    output wire [15:0] audio_l,        // MISTER-155: muted while paused (see core_audio mux)
     output wire [15:0] audio_r,
 
     // ---- controls (any domain; synchronised inside) -----------------------
@@ -130,7 +130,9 @@ module escape_mister (
     // page from the mappable Credits button (0 = off).
     input  wire [2:0]  uvol_ym,
     input  wire [2:0]  uvol_tms,
-    input  wire [1:0]  credits_page,
+        input  wire [3:0]  crt_hadj,          // MISTER-154: CRT H adjust, signed nibble
+    input  wire [3:0]  crt_vadj,          // MISTER-154: CRT V adjust, signed nibble
+    input  wire        pause,             // MISTER-155: freeze the machine (video keeps scanning)
 
     // ---- status -----------------------------------------------------------
     output wire        rom_ready    // SDRAM up, image loaded, self-check done
@@ -146,10 +148,26 @@ localparam VID_V_TOTAL  = 10'd262;
 localparam VID_H_BPORCH = 10'd60;
 localparam VID_H_ACTIVE = 10'd336;
 localparam VID_H_TOTAL  = 10'd456;
-// sync pulses live in the front porch (active .. front porch .. sync .. back
-// porch).  The Pocket emitted 1-clock pulses, which the APF scaler accepts;
-// MiSTer's scandoubler/ascal need real widths.
-localparam HS_START = 10'd404, HS_END = 10'd436;   // 32 clocks
+// sync pulses live in the blanking interval (active .. front porch .. sync
+// .. back porch).  The Pocket emitted 1-clock pulses, which the APF scaler
+// accepts; MiSTer's scandoubler/ascal need real widths.
+//
+// MISTER-160: horizontal sync position is chosen for consumer 15 kHz
+// displays.  Active video is clocks 60..395; a TV places the left edge of
+// the picture ~10 us after the sync leading edge (4.7 us sync + ~5 us back
+// porch).  The original 404..436 pulse put that interval at 112 clocks =
+// 15.6 us and a composite Zenith showed the picture well right of centre,
+// beyond CRT H Adjust's +-8 (2026-09-01).  MISTER-160 tried 444..20 (72
+// clocks, 10.1 us) and overshot left (2026-09-02).  MISTER-161 calibrates
+// against a core the same set centres perfectly: the MegaDrive VDP in H40
+// puts sync 71 px ahead of the picture (HSYNC_START = DISP_START+7, blank
+// ends at 11, 13 px border; vdp_common.vhd), ~11.6 us with the slow-clock
+// stretch, on a 47.7 us picture - ours is 46.9 us, so the same interval
+// centres both.  432..8 = 84 clocks = 11.7 us.  The pulse stays inside
+// blanking (396..59); the machine raster and active window do not move;
+// HDMI is unaffected because the scaler positions by DE.  The comparators
+// below are wrap-safe (this pulse and the adjuster's extremes cross x=0).
+localparam HS_START = 10'd432, HS_END = 10'd464;   // 32 clocks, wraps to 8
 localparam VS_START = 10'd254, VS_END = 10'd257;   // 3 lines
 
 reg [9:0] x_count = 10'd0;
@@ -1243,41 +1261,29 @@ wire [7:0]  pal_r = (r_m[10:2] > 9'd255) ? 8'd255 : r_m[9:2];
 wire [7:0]  pal_g = (g_m[10:2] > 9'd255) ? 8'd255 : g_m[9:2];
 wire [7:0]  pal_b = (b_m[10:2] > 9'd255) ? 8'd255 : b_m[9:2];
 
-// ---- MISTER-132: core-credits overlay -------------------------------------
-// Drawn here, in the core's own video path, because the CONF_STR submenu
-// pages this replaces render EMPTY on some framework builds (see
-// Arcade-Escape.sv).  escape_credits is pipelined to the same two-clock depth
-// as the colour path, so its pixel lands on the pixel it belongs to.
-// MISTER-142: the MISTER-134 boot splash is retired for release (owner
-// gate, docs/MISTER.md status note): the machine boots clean, and the
-// build number lives on credits page 1 (its second line -
-// support/gen_credits_overlay.py, BUMP THEM TOGETHER), reachable via the
-// OSD "Show Credits" trigger, the mappable Credits button, or keyboard C.
-// The splash existed to answer "is the new rbf actually running?" during
-// field-testing; the dated rbf filename plus the credits page carry that
-// duty now.
-wire [1:0] cr_page_eff = credits_page;
-
-wire cr_on, cr_px;
-escape_credits #(
-    .H_BPORCH ( VID_H_BPORCH ), .V_BPORCH ( VID_V_BPORCH ),
-    .H_ACTIVE ( VID_H_ACTIVE ), .V_ACTIVE ( VID_V_ACTIVE )
-) u_credits (
-    .clk     ( clk_sys ),
-    .page    ( cr_page_eff ),
-    .x_count ( x_count ),
-    .y_count ( y_count ),
-    .ov_on   ( cr_on ),
-    .ov_px   ( cr_px )
-);
-
-// ---- video output registers ----------------------------------------------
-// The colour path is two clocks behind the raster counters (color_vaddr is
-// registered, then the colour RAM read is registered), so the sync/blank
-// flags are delayed to match.
 reg [1:0] de_d, hs_d, vs_d, hb_d, vb_d;
-wire cur_hs = (x_count >= HS_START) && (x_count < HS_END);
-wire cur_vs = (y_count >= VS_START) && (y_count < VS_END);
+// MISTER-154 CRT H/V adjust: the standard MiSTer idiom - a signed offset
+// added to the sync start/end positions (cf. Arcade-PsikyoSH2 PS6406B.sv
+// HSYNC_START, Arcade-Cave's P1 adjusters; both GPL-3.0 - pattern
+// re-derived here, no code copied). Only where the picture sits on the
+// glass moves; the machine raster, active window and blanking are
+// untouched. Wrap-safe so +7 on VSync (base 254..257 of 262) still emits
+// a full-width pulse across the frame boundary.
+wire signed [10:0] hadj = {{7{crt_hadj[3]}}, crt_hadj};
+wire signed [10:0] vadj = {{7{crt_vadj[3]}}, crt_vadj};
+function [9:0] wrapd(input signed [11:0] v, input [9:0] total);
+    wrapd = v >= $signed({2'b00, total}) ? v - $signed({2'b00, total})
+          : v < 0                        ? v + $signed({2'b00, total})
+          : v[9:0];
+endfunction
+wire [9:0] hs_s = wrapd($signed({2'b00, HS_START}) + hadj, VID_H_TOTAL);
+wire [9:0] hs_e = wrapd($signed({2'b00, HS_END})   + hadj, VID_H_TOTAL);
+wire [9:0] vs_s = wrapd($signed({2'b00, VS_START}) + vadj, VID_V_TOTAL);
+wire [9:0] vs_e = wrapd($signed({2'b00, VS_END})   + vadj, VID_V_TOTAL);
+wire cur_hs = (hs_s <= hs_e) ? (x_count >= hs_s && x_count < hs_e)
+                             : (x_count >= hs_s || x_count < hs_e);
+wire cur_vs = (vs_s <= vs_e) ? (y_count >= vs_s && y_count < vs_e)
+                             : (y_count >= vs_s || y_count < vs_e);
 always @(posedge clk_sys) begin
     hs_d <= {hs_d[0], cur_hs};
     vs_d <= {vs_d[0], cur_vs};
@@ -1289,12 +1295,6 @@ always @(posedge clk_sys) begin
     VBlank <= vb_d[1];
     if (hb_d[1] || vb_d[1] || evideo_off) begin
         VGA_R <= 8'd0; VGA_G <= 8'd0; VGA_B <= 8'd0;
-    end else if (cr_on) begin
-        // credits overlay: lit text white, everything else the game picture
-        // dimmed to a quarter so the page reads over any scene
-        VGA_R <= cr_px ? 8'hFF : {2'b00, pal_r[7:2]};
-        VGA_G <= cr_px ? 8'hFF : {2'b00, pal_g[7:2]};
-        VGA_B <= cr_px ? 8'hFF : {2'b00, pal_b[7:2]};
     end else begin
         VGA_R <= pal_r; VGA_G <= pal_g; VGA_B <= pal_b;
     end
@@ -1375,6 +1375,13 @@ wire [3:0] p2_btn = {p2_duck | p2_bomb, 1'b0, p2_fire | p2_bomb, p2_jump | p2_bo
 //       variant shipped a 68000 and is CPU_TYPE 0. Neither is a fallback.
 //       Behaviour is identical on this ROM; interrupt entry costs ~5 extra
 //       clocks for the extended exception frame. See docs/CPU_AND_ARBITER.md.
+
+// MISTER-155: pause mutes the output; the chips themselves are frozen by
+// the core's gated enable ladder, so this only silences the held DAC level.
+wire [15:0] core_audio_l_w, core_audio_r_w;
+assign audio_l = pause ? 16'd0 : core_audio_l_w;
+assign audio_r = pause ? 16'd0 : core_audio_r_w;
+
 escape_core #(.PAR4_EN(1), .FASTPATH_EN(FASTPATH_EN), .EIRQ_MODE(0),
               .TASLOCK_EN(TASLOCK_EN), .VSHAD3_EN(1), .CPU_TYPE(1)) ecore (
     .clk        ( clk_sys ),
@@ -1408,14 +1415,15 @@ escape_core #(.PAR4_EN(1), .FASTPATH_EN(FASTPATH_EN), .EIRQ_MODE(0),
     .coin1      ( coin1_s ),
     .coin2      ( coin2_s ),
     .step_btn   ( start1_s ),
+    .pause      ( pause ),
     .skip_test  ( skip_s ),
     .irq_strict ( 1'b0 ),
     .vshad3_on  ( vshad3_s ),
     .uvol_ym    ( uvol_ym ),
     .uvol_tms   ( uvol_tms ),
     .uvol_fm    ( 24'hFFFFFF ),
-    .audio_l    ( audio_l ),
-    .audio_r    ( audio_r ),
+    .audio_l    ( core_audio_l_w ),
+    .audio_r    ( core_audio_r_w ),
     .alpha_vaddr( alpha_vaddr ),
     .alpha_vdata( alpha_vdata ),
     .color_vaddr( color_vaddr ),

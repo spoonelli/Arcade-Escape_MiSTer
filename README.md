@@ -104,18 +104,19 @@ Both files are in [`releases/`](releases/) in this repository.
 
 ## Self-Test and First boot
 
-Note that this core follows the authentic behavior of the original PCB with a "Waiting for Second Processor" screen that will hold for several seconds.  After that, the machine boots clean. To confirm which build is running, open **Show
-Credits** in the OSD (or press the Credits button / keyboard **C**) — the
-**MISTER BUILD number** is on page 1. Check it matches the build you
-installed; it is the only guard against a cached or stale `.rbf`, and it
+Note that this core follows the authentic behavior of the original PCB with a "Waiting for Second Processor" screen that will hold for several seconds.  After that, the machine boots clean. To confirm which build is running, open the OSD — the
+**version footer** at the bottom reads `ESCAPE v<date> by spoonelli`,
+with the date matching the `.rbf` filename you installed. Check they
+agree; it is the only guard against a cached or stale `.rbf`, and it
 has caught that more than once.
 
 ## Controls
 
 Run **Define eprom buttons** in the OSD the first time (new buttons do not
-appear in previously saved maps): Jump, Fire, Duck, Bomb, Start, Coin, and
-Credits. Fresh installs default to Jump on the left face button, Fire on
-the bottom, Duck on the right, Bomb on top (SNES Y/B/A/X). The define
+appear in previously saved maps): Jump, Fire, Duck, Bomb, Start, Coin,
+and Pause. Fresh installs default to Jump on the left face button, Fire
+on the bottom, Duck on the right, Bomb on top (SNES Y/B/A/X), and Pause
+on the left shoulder. The define
 flow prompts for all seven buttons - answer every prompt before Finish,
 or the unanswered ones stay unmapped. Note the framework treats your
 global User/Menu button as "Undefine" inside this flow: assigning a
@@ -123,11 +124,29 @@ core button to it silently clears the slot instead.
 
 ## OSD options
 
-- **Music Volume / Speech Volume** — independent 8-step sliders.
-- **Show Credits** — cycles the credits pages (so does the assignable
-  Credits button, or the **C** key on a keyboard).
-- **ROM Shadow** — leave On (default); it is a performance feature, not a hack.
+- **Video page** — aspect ratio, **Rotate** (No / CCW / CW) and
+  **Flip 180** for rotated or flipped cabinets, scandoubler effects, and
+  **CRT H/V Adjust** (±8 steps, for positioning the picture on your
+  display). Rotation is unavailable under direct video.
+- **Audio page** — independent Music / Speech volume sliders.
+- **Debug page** — ROM Shadow (leave On, the default; it is a performance
+  feature, not a hack) and Skip Self-Test. Future diagnostics will live
+  here.
+- **Pause options page** — "Pause when OSD is open" (default Off) and
+  "Dim video after 10s" (default On; halves brightness against burn-in).
+  The mappable **Pause button** (default: left shoulder) toggles pause
+  any time. Either way the whole machine freezes coherently — both
+  68010s, sound board, speech — and resumes exactly where it stopped.
+  Reset cancels a held pause.
+- **Service Mode** — the operator control, on the root menu.
 - **Reset** — the machine's hard reset.
+
+If the pages ever appear "exploded" — every option listed flat under its
+page heading — that is MiSTer's own flat-view toggle, not the core: in the
+OSD the framework maps the gamepad's **R2** trigger (and the backtick key)
+to it. Press R2 again to restore the pages.
+
+Attributions live in `NOTICE.md` (in this zip and the repository).
 
 ## Auto-updates (update_all / Downloader)
 
